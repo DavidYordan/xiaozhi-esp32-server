@@ -273,6 +273,11 @@ Memory:
     # 如果这里不填，则会默认使用selected_module.LLM的模型作为意图识别的思考模型
     # 如果你的不想使用selected_module.LLM记忆存储，这里最好使用独立的LLM作为意图识别，例如使用免费的ChatGLMLLM
     llm: ChatGLMLLM
+  memu:
+    type: memu
+    base_url: http://127.0.0.1:8003
+    modality: conversation
+    serve_port: 8003
 
 ASR:
   FunASR:
