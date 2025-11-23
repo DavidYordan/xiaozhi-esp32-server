@@ -17,7 +17,7 @@ class MemoryProvider(MemoryProviderBase):
         super().__init__(config)
         self.memu_base_url = str(config.get("base_url", "")).strip()
         self.modality = str(config.get("modality", "conversation")).strip()
-        self.serve_port = int(config.get("serve_port", 8003))
+        self.serve_port = int(config.get("serve_port", 8765))
         self.resources_dir = os.path.join(get_project_dir(), "data", "memu_resources")
         os.makedirs(self.resources_dir, exist_ok=True)
         self.use_memu = bool(self.memu_base_url)

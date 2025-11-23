@@ -275,9 +275,9 @@ Memory:
     llm: ChatGLMLLM
   memu:
     type: memu
-    base_url: http://127.0.0.1:8003
+    base_url: http://127.0.0.1:8765
     modality: conversation
-    serve_port: 8003
+    serve_port: 8765
 
 ASR:
   FunASR:
