@@ -1,4 +1,5 @@
 import os
+import re
 from aiohttp import web
 from config.logger import setup_logging
 from config.config_loader import get_project_dir
@@ -17,6 +18,9 @@ class MemuResourceHandler:
     async def handle_get(self, request: web.Request):
         rid = request.match_info.get("rid", "")
         if not rid:
+            return web.Response(status=400, text="invalid id")
+        rid = os.path.basename(rid)
+        if not re.fullmatch(r"[A-Za-z0-9._-]+", rid):
             return web.Response(status=400, text="invalid id")
         fpath = os.path.join(self.base_dir, rid)
         self.logger.bind(tag=TAG).info(f"MemU resource fetch: rid={rid}, path={fpath}")

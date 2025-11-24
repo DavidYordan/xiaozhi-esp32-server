@@ -10,6 +10,7 @@ import threading
 import traceback
 import subprocess
 import websockets
+import httpx
 
 from core.utils.util import (
     extract_json_from_string,
@@ -41,6 +42,7 @@ from config.manage_api_client import DeviceNotFoundException, DeviceBindExceptio
 from core.utils.prompt_manager import PromptManager
 from core.utils.voiceprint_provider import VoiceprintProvider
 from core.utils import textUtils
+from config.config_loader import get_project_dir
 
 TAG = __name__
 
@@ -227,32 +229,15 @@ class ConnectionHandler:
                     )
 
     async def _save_and_close(self, ws):
-        """保存记忆并关闭连接"""
         try:
             if self.memory:
-                # 使用线程池异步保存记忆
-                def save_memory_task():
-                    try:
-                        # 创建新事件循环（避免与主循环冲突）
-                        loop = asyncio.new_event_loop()
-                        asyncio.set_event_loop(loop)
-                        loop.run_until_complete(
-                            self.memory.save_memory(self.dialogue.dialogue)
-                        )
-                    except Exception as e:
-                        self.logger.bind(tag=TAG).error(f"保存记忆失败: {e}")
-                    finally:
-                        try:
-                            loop.close()
-                        except Exception:
-                            pass
-
-                # 启动线程保存记忆，不等待完成
-                threading.Thread(target=save_memory_task, daemon=True).start()
+                try:
+                    await self.memory.save_memory(self.dialogue.dialogue)
+                except Exception as e:
+                    self.logger.bind(tag=TAG).error(f"保存记忆失败: {e}")
         except Exception as e:
             self.logger.bind(tag=TAG).error(f"保存记忆失败: {e}")
         finally:
-            # 立即关闭连接，不等待记忆保存完成
             try:
                 await self.close(ws)
             except Exception as close_error:
@@ -450,6 +435,8 @@ class ConnectionHandler:
             self._init_report_threads()
             """更新系统提示词"""
             self._init_prompt_enhancement()
+            if self.config.get("selected_module", {}).get("Memory") == "memu":
+                asyncio.run_coroutine_threadsafe(self._process_connection_memu_memory(), self.loop)
 
         except Exception as e:
             self.logger.bind(tag=TAG).error(f"实例化组件失败: {e}")
@@ -732,6 +719,29 @@ class ConnectionHandler:
         # 异步初始化工具处理器
         if hasattr(self, "loop") and self.loop:
             asyncio.run_coroutine_threadsafe(self.func_handler._initialize(), self.loop)
+
+    async def _process_connection_memu_memory(self):
+        try:
+            memu_conf = self.config.get("Memory", {}).get("memu", {})
+            base_url = str(memu_conf.get("base_url", "")).strip()
+            modality = str(memu_conf.get("modality", "conversation")).strip()
+            if not base_url:
+                return
+            data_dir = self.config.get("log", {}).get("data_dir", "data")
+            fpath = os.path.join(get_project_dir(), data_dir, "memu_boot_memory.txt")
+            if not os.path.exists(fpath):
+                return
+            text = open(fpath, "r", encoding="utf-8").read().strip()
+            if not text:
+                return
+            payload = {"text": text, "modality": modality, "summary_prompt": None}
+            async with httpx.AsyncClient(timeout=30) as client:
+                r = await client.post(f"{base_url}/memorize", json=payload)
+                r.raise_for_status()
+            open(fpath, "w", encoding="utf-8").write("")
+            self.logger.bind(tag=TAG).info("MemU连接初始化记忆已固化并清空文档")
+        except Exception as e:
+            self.logger.bind(tag=TAG).error(f"MemU连接初始化记忆固化失败: {e}")
 
     def change_system_prompt(self, prompt):
         self.prompt = prompt

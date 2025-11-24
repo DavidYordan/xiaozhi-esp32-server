@@ -8,7 +8,7 @@ import httpx
 import re
 from ..base import MemoryProviderBase, logger
 from core.utils.util import get_local_ip
-from config.config_loader import get_project_dir
+from config.config_loader import get_project_dir, load_config
 
 TAG = __name__
 
@@ -19,6 +19,7 @@ class MemoryProvider(MemoryProviderBase):
         self.memu_base_url = str(config.get("base_url", "")).strip()
         self.modality = str(config.get("modality", "conversation")).strip()
         self.serve_port = int(config.get("serve_port", 8765))
+        self.http_port = int(load_config().get("server", {}).get("http_port", 8003))
         self.resources_dir = os.path.join(get_project_dir(), "data", "memu_resources")
         os.makedirs(self.resources_dir, exist_ok=True)
         self.use_memu = bool(self.memu_base_url)
@@ -56,7 +57,7 @@ class MemoryProvider(MemoryProviderBase):
         except Exception as e:
             logger.bind(tag=TAG).error(f"Write resource failed: {e}")
             return None
-        resource_url = f"http://{get_local_ip()}:{self.serve_port}/memu/resources/{fname}"
+        resource_url = f"http://{get_local_ip()}:{self.http_port}/memu/resources/{fname}"
         payload = {"text": text, "modality": self.modality, "summary_prompt": None}
         try:
             logger.bind(tag=TAG).info(f"MemU memorize direct text, base: {self.memu_base_url}")
