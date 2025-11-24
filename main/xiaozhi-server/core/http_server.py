@@ -3,6 +3,7 @@ from aiohttp import web
 from config.logger import setup_logging
 from core.api.ota_handler import OTAHandler
 from core.api.vision_handler import VisionHandler
+from core.utils.util import get_vision_url
 from core.api.memu_handler import MemuResourceHandler
 
 TAG = __name__
@@ -52,15 +53,19 @@ class SimpleHttpServer:
                         web.options("/xiaozhi/ota/", self.ota_handler.handle_post),
                     ]
                 )
-            # 添加路由
-            app.add_routes(
-                [
-                    web.get("/mcp/vision/explain", self.vision_handler.handle_get),
-                    web.post("/mcp/vision/explain", self.vision_handler.handle_post),
-                    web.options("/mcp/vision/explain", self.vision_handler.handle_post),
-                    web.get("/memu/resources/{rid}", self.memu_handler.handle_get),
-                ]
-            )
+            routes = [
+                web.get("/memu/resources/{rid}", self.memu_handler.handle_get)
+            ]
+            vision_url = get_vision_url(self.config)
+            if vision_url and vision_url != "null":
+                routes.extend(
+                    [
+                        web.get("/mcp/vision/explain", self.vision_handler.handle_get),
+                        web.post("/mcp/vision/explain", self.vision_handler.handle_post),
+                        web.options("/mcp/vision/explain", self.vision_handler.handle_post),
+                    ]
+                )
+            app.add_routes(routes)
 
             # 运行服务
             runner = web.AppRunner(app)

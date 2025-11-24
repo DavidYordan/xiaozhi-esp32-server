@@ -5,8 +5,6 @@ from config.logger import setup_logging
 
 logger = setup_logging()
 
-
-# 确保以项目根目录为基准进行路径解析与导入
 current_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.abspath(os.path.join(current_dir, "..", ".."))
 if project_root not in sys.path:

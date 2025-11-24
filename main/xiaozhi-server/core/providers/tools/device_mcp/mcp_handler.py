@@ -225,34 +225,23 @@ async def handle_mcp_message(conn, mcp_client: MCPClient, payload: dict):
 
 
 async def send_mcp_initialize_message(conn):
-    """发送MCP初始化消息"""
-
     vision_url = get_vision_url(conn.config)
-
-    # 密钥生成token
     auth = AuthToken(conn.config["server"]["auth_key"])
     token = auth.generate_token(conn.headers.get("device-id"))
-
-    vision = {
-        "url": vision_url,
-        "token": token,
+    capabilities = {
+        "roots": {"listChanged": True},
+        "sampling": {},
     }
-
+    if vision_url and vision_url != "null":
+        capabilities["vision"] = {"url": vision_url, "token": token}
     payload = {
         "jsonrpc": "2.0",
-        "id": 1,  # mcpInitializeID
+        "id": 1,
         "method": "initialize",
         "params": {
             "protocolVersion": "2024-11-05",
-            "capabilities": {
-                "roots": {"listChanged": True},
-                "sampling": {},
-                "vision": vision,
-            },
-            "clientInfo": {
-                "name": "XiaozhiClient",
-                "version": "1.0.0",
-            },
+            "capabilities": capabilities,
+            "clientInfo": {"name": "XiaozhiClient", "version": "1.0.0"},
         },
     }
     logger.bind(tag=TAG).debug("发送MCP初始化消息")

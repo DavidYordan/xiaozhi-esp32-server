@@ -494,7 +494,18 @@ def get_vision_url(config: dict) -> str:
     Returns:
         str: vision URL
     """
-    server_config = config["server"]
+    server_config = config.get("server", {})
+    if server_config.get("disable_vision", False):
+        return "null"
+
+    selected = config.get("selected_module", {})
+    vllm_selected_id = selected.get("VLLM")
+    vllm_configs = config.get("VLLM", {})
+    if vllm_selected_id and vllm_selected_id in vllm_configs:
+        cfg = vllm_configs.get(vllm_selected_id, {})
+        if cfg.get("type") == "novision":
+            return "null"
+
     vision_explain = server_config.get("vision_explain", "")
     if "你的" in vision_explain:
         local_ip = get_local_ip()
