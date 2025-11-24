@@ -1,5 +1,6 @@
 import httpx
 import openai
+import json
 from openai.types import CompletionUsage
 from config.logger import setup_logging
 from core.utils.util import check_model_key
@@ -79,9 +80,19 @@ class LLMProvider(LLMProviderBase):
                 if value is not None:
                     request_params[key] = value
 
+            try:
+                logger.bind(tag=TAG).info(
+                    f"LLM 请求: session={session_id}, base_url={self.base_url}, model={self.model_name}, payload={json.dumps(request_params, ensure_ascii=False)}"
+                )
+            except Exception:
+                logger.bind(tag=TAG).info(
+                    f"LLM 请求: session={session_id}, base_url={self.base_url}, model={self.model_name}"
+                )
+
             responses = self.client.chat.completions.create(**request_params)
 
             is_active = True
+            full_content = ""
             for chunk in responses:
                 try:
                     delta = chunk.choices[0].delta if getattr(chunk, "choices", None) else None
@@ -96,7 +107,13 @@ class LLMProvider(LLMProviderBase):
                         is_active = True
                         content = content.split("</think>")[-1]
                     if is_active:
+                        full_content += content
                         yield content
+
+            if full_content:
+                logger.bind(tag=TAG).info(
+                    f"LLM 完整回复: session={session_id}, content={full_content}"
+                )
 
         except Exception as e:
             logger.bind(tag=TAG).error(f"Error in response generation: {e}")
@@ -124,13 +141,28 @@ class LLMProvider(LLMProviderBase):
                 if value is not None:
                     request_params[key] = value
 
+            try:
+                logger.bind(tag=TAG).info(
+                    f"LLM 请求(函数): session={session_id}, base_url={self.base_url}, model={self.model_name}, payload={json.dumps(request_params, ensure_ascii=False)}"
+                )
+            except Exception:
+                logger.bind(tag=TAG).info(
+                    f"LLM 请求(函数): session={session_id}, base_url={self.base_url}, model={self.model_name}"
+                )
+
             stream = self.client.chat.completions.create(**request_params)
 
+            full_content = ""
+            last_tool_calls = None
             for chunk in stream:
                 if getattr(chunk, "choices", None):
                     delta = chunk.choices[0].delta
                     content = getattr(delta, "content", "")
                     tool_calls = getattr(delta, "tool_calls", None)
+                    if content:
+                        full_content += content
+                    if tool_calls:
+                        last_tool_calls = tool_calls
                     yield content, tool_calls
                 elif isinstance(getattr(chunk, "usage", None), CompletionUsage):
                     usage_info = getattr(chunk, "usage", None)
@@ -139,6 +171,15 @@ class LLMProvider(LLMProviderBase):
                         f"输出 {getattr(usage_info, 'completion_tokens', '未知')}，"
                         f"共计 {getattr(usage_info, 'total_tokens', '未知')}"
                     )
+
+            try:
+                logger.bind(tag=TAG).info(
+                    f"LLM 完整回复(函数): session={session_id}, content={full_content}, tool_calls={json.dumps(last_tool_calls, ensure_ascii=False) if last_tool_calls is not None else None}"
+                )
+            except Exception:
+                logger.bind(tag=TAG).info(
+                    f"LLM 完整回复(函数): session={session_id}"
+                )
 
         except Exception as e:
             logger.bind(tag=TAG).error(f"Error in function call streaming: {e}")
