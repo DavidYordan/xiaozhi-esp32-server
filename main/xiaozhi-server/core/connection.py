@@ -90,7 +90,7 @@ class ConnectionHandler:
         self.client_listen_mode = "auto"
 
         # 线程任务相关
-        self.loop = asyncio.get_event_loop()
+        self.loop = None
         self.stop_event = threading.Event()
         self.executor = ThreadPoolExecutor(max_workers=5)
 
@@ -164,6 +164,7 @@ class ConnectionHandler:
 
     async def handle_connection(self, ws):
         try:
+            self.loop = asyncio.get_running_loop()
             # 获取并验证headers
             self.headers = dict(ws.request.headers)
             real_ip = self.headers.get("x-real-ip") or self.headers.get(
@@ -401,15 +402,17 @@ class ConnectionHandler:
             self._initialize_voiceprint()
 
             # 打开语音识别通道
-            asyncio.run_coroutine_threadsafe(
+            _f1 = asyncio.run_coroutine_threadsafe(
                 self.asr.open_audio_channels(self), self.loop
             )
+            _f1.add_done_callback(lambda f: self.logger.bind(tag=TAG).error(f"ASR通道初始化失败: {f.exception()}") if f.exception() else None)
             if self.tts is None:
                 self.tts = self._initialize_tts()
             # 打开语音合成通道
-            asyncio.run_coroutine_threadsafe(
+            _f2 = asyncio.run_coroutine_threadsafe(
                 self.tts.open_audio_channels(self), self.loop
             )
+            _f2.add_done_callback(lambda f: self.logger.bind(tag=TAG).error(f"TTS通道初始化失败: {f.exception()}") if f.exception() else None)
 
             if self.llm is None and "LLM" in self.config.get("selected_module", {}):
                 try:
@@ -438,7 +441,8 @@ class ConnectionHandler:
             self.logger.bind(tag=TAG).info(f"初始化组件: prompt成功 {self.config.get('prompt', '')[:50]}...")
             if self.config.get("selected_module", {}).get("Memory") == "memu":
                 self.logger.bind(tag=TAG).info(f"初始化组件: memu成功")
-                asyncio.run_coroutine_threadsafe(self._process_connection_memu_memory(), self.loop)
+                _f3 = asyncio.run_coroutine_threadsafe(self._process_connection_memu_memory(), self.loop)
+                _f3.add_done_callback(lambda f: self.logger.bind(tag=TAG).error(f"MemU初始化协程异常: {f.exception()}") if f.exception() else None)
 
         except Exception as e:
             self.logger.bind(tag=TAG).error(f"实例化组件失败: {e}")
@@ -728,13 +732,16 @@ class ConnectionHandler:
             base_url = str(memu_conf.get("base_url", "")).strip()
             modality = str(memu_conf.get("modality", "conversation")).strip()
             if not base_url:
+                self.logger.bind(tag=TAG).warning("MemU连接初始化记忆失败: base_url为空")
                 return
             data_dir = self.config.get("log", {}).get("data_dir", "data")
             fpath = os.path.join(get_project_dir(), data_dir, "memu_boot_memory.txt")
             if not os.path.exists(fpath):
+                self.logger.bind(tag=TAG).warning(f"MemU连接初始化记忆失败: 文件 {fpath} 不存在")
                 return
             text = open(fpath, "r", encoding="utf-8").read().strip()
             if not text:
+                self.logger.bind(tag=TAG).warning(f"MemU连接初始化记忆失败: 文件 {fpath} 内容为空")
                 return
             payload = {"text": text, "modality": modality, "summary_prompt": None}
             async with httpx.AsyncClient(timeout=30) as client:
