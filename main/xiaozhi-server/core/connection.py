@@ -597,6 +597,12 @@ class ConnectionHandler:
                 ] = plugin_from_server.keys()
         if private_config.get("prompt", None) is not None:
             self.config["prompt"] = private_config["prompt"]
+        if private_config.get("wakeup_words", None) is not None:
+            self.config["wakeup_words"] = private_config["wakeup_words"]
+        if private_config.get("enable_greeting", None) is not None:
+            self.config["enable_greeting"] = private_config["enable_greeting"]
+        if private_config.get("enable_wakeup_words_response_cache", None) is not None:
+            self.config["enable_wakeup_words_response_cache"] = private_config["enable_wakeup_words_response_cache"]
         # 获取声纹信息
         if private_config.get("voiceprint", None) is not None:
             self.config["voiceprint"] = private_config["voiceprint"]

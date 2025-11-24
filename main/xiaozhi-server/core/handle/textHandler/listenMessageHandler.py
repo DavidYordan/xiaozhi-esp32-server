@@ -42,7 +42,9 @@ class ListenTextMessageHandler(TextMessageHandler):
                 )
 
                 # 识别是否是唤醒词
-                is_wakeup_words = filtered_text in conn.config.get("wakeup_words")
+                _wlist = conn.config.get("wakeup_words") or []
+                _normalized = set(remove_punctuation_and_length(w)[1] for w in _wlist if isinstance(w, str))
+                is_wakeup_words = filtered_text in _normalized
                 # 是否开启唤醒词回复
                 enable_greeting = conn.config.get("enable_greeting", True)
 

@@ -79,7 +79,9 @@ async def checkWakeupWords(conn, text):
         return False
 
     _, filtered_text = remove_punctuation_and_length(text)
-    if filtered_text not in conn.config.get("wakeup_words"):
+    _wlist = conn.config.get("wakeup_words") or []
+    _normalized = set(remove_punctuation_and_length(w)[1] for w in _wlist if isinstance(w, str))
+    if filtered_text not in _normalized:
         return False
 
     conn.just_woken_up = True
