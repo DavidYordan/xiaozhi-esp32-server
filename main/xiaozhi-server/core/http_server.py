@@ -14,7 +14,7 @@ class SimpleHttpServer:
         self.config = config
         self.logger = setup_logging()
         self.ota_handler = OTAHandler(config)
-        self.vision_handler = VisionHandler(config)
+        self.vision_handler = None
         self.memu_handler = MemuResourceHandler(config)
 
     def _get_websocket_url(self, local_ip: str, port: int) -> str:
@@ -58,6 +58,8 @@ class SimpleHttpServer:
             ]
             vision_url = get_vision_url(self.config)
             if vision_url and vision_url != "null":
+                if self.vision_handler is None:
+                    self.vision_handler = VisionHandler(self.config)
                 routes.extend(
                     [
                         web.get("/mcp/vision/explain", self.vision_handler.handle_get),
