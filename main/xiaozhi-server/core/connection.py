@@ -767,6 +767,17 @@ class ConnectionHandler:
                     self.memory.query_memory(query), self.loop
                 )
                 memory_str = future.result()
+            self.logger.bind(tag=TAG).info(
+                f"LLM 调用准备: intent={self.intent_type}, functions={0 if self.intent_type != 'function_call' or functions is None else len(functions)}, memory_len={0 if memory_str is None else len(memory_str)}"
+            )
+            self.logger.bind(tag=TAG).info(
+                lambda: json.dumps(
+                    self.dialogue.get_llm_dialogue_with_memory(
+                        memory_str, self.config.get("voiceprint", {})
+                    ),
+                    ensure_ascii=False,
+                )
+            )
 
             if self.intent_type == "function_call" and functions is not None:
                 # 使用支持functions的streaming接口
