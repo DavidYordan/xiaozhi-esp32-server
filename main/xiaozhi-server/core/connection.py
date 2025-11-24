@@ -435,7 +435,9 @@ class ConnectionHandler:
             self._init_report_threads()
             """更新系统提示词"""
             self._init_prompt_enhancement()
+            self.logger.bind(tag=TAG).info(f"初始化组件: prompt成功 {self.config.get('prompt', '')[:50]}...")
             if self.config.get("selected_module", {}).get("Memory") == "memu":
+                self.logger.bind(tag=TAG).info(f"初始化组件: memu成功")
                 asyncio.run_coroutine_threadsafe(self._process_connection_memu_memory(), self.loop)
 
         except Exception as e:
