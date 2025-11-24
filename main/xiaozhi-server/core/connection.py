@@ -922,12 +922,14 @@ class ConnectionHandler:
         need_llm_tools = []
 
         for result, tool_call_data in tool_results:
-            if result.action in [Action.RESPONSE, Action.NOTFOUND, Action.ERROR]:  # 直接回复前端
-                text = result.response if result.response else result.result
-                self.tts.tts_one_sentence(self, ContentType.TEXT, content_detail=text)
-                self.dialogue.put(Message(role="assistant", content=text))
+            if result is None:
+                continue
+            if result.action in [Action.RESPONSE, Action.NOTFOUND, Action.ERROR]:
+                text = result.response if getattr(result, "response", None) else result.result
+                if text is not None:
+                    self.tts.tts_one_sentence(self, ContentType.TEXT, content_detail=text)
+                    self.dialogue.put(Message(role="assistant", content=text))
             elif result.action == Action.REQLLM:
-                # 收集需要 LLM 处理的工具
                 need_llm_tools.append((result, tool_call_data))
             else:
                 pass

@@ -6,10 +6,18 @@ from config.logger import setup_logging
 logger = setup_logging()
 
 
+# 确保以项目根目录为基准进行路径解析与导入
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.abspath(os.path.join(current_dir, "..", ".."))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
+
 def create_instance(class_name, *args, **kwargs):
-    if os.path.exists(
-        os.path.join("core", "providers", "memory", class_name, f"{class_name}.py")
-    ):
+    provider_file = os.path.join(
+        project_root, "core", "providers", "memory", class_name, f"{class_name}.py"
+    )
+    if os.path.exists(provider_file):
         lib_name = f"core.providers.memory.{class_name}.{class_name}"
         if lib_name not in sys.modules:
             sys.modules[lib_name] = importlib.import_module(f"{lib_name}")

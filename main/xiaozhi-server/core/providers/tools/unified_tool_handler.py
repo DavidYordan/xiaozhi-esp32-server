@@ -180,8 +180,13 @@ class UnifiedToolHandler:
         if not responses:
             return ActionResponse(action=Action.NONE, response="无响应")
 
+        # 过滤掉为 None 的响应
+        safe_responses = [r for r in responses if r is not None]
+        if not safe_responses:
+            return ActionResponse(action=Action.NONE, response="无响应")
+
         # 如果有任何错误，返回第一个错误
-        for response in responses:
+        for response in safe_responses:
             if response.action == Action.ERROR:
                 return response
 
@@ -189,15 +194,15 @@ class UnifiedToolHandler:
         contents = []
         responses_text = []
 
-        for response in responses:
-            if response.content:
+        for response in safe_responses:
+            if getattr(response, "content", None):
                 contents.append(response.content)
-            if response.response:
+            if getattr(response, "response", None):
                 responses_text.append(response.response)
 
         # 确定最终的动作类型
         final_action = Action.RESPONSE
-        for response in responses:
+        for response in safe_responses:
             if response.action == Action.REQLLM:
                 final_action = Action.REQLLM
                 break
