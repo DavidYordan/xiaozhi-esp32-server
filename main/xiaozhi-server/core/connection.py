@@ -426,6 +426,22 @@ class ConnectionHandler:
                 self.tts.open_audio_channels(self), self.loop
             )
 
+            if self.llm is None and "LLM" in self.config.get("selected_module", {}):
+                try:
+                    from core.utils import llm as llm_utils
+                    select_llm_module = self.config["selected_module"]["LLM"]
+                    llm_type = (
+                        select_llm_module
+                        if "type" not in self.config["LLM"][select_llm_module]
+                        else self.config["LLM"][select_llm_module]["type"]
+                    )
+                    self.llm = llm_utils.create_instance(
+                        llm_type, self.config["LLM"][select_llm_module]
+                    )
+                    self.logger.bind(tag=TAG).info(f"初始化组件: llm成功 {select_llm_module}")
+                except Exception as e:
+                    self.logger.bind(tag=TAG).error(f"初始化LLM失败: {e}")
+
             """加载记忆"""
             self._initialize_memory()
             """加载意图识别"""
@@ -770,15 +786,19 @@ class ConnectionHandler:
             self.logger.bind(tag=TAG).info(
                 f"LLM 调用准备: intent={self.intent_type}, functions={0 if self.intent_type != 'function_call' or functions is None else len(functions)}, memory_len={0 if memory_str is None else len(memory_str)}"
             )
-            self.logger.bind(tag=TAG).info(
-                lambda: json.dumps(
-                    self.dialogue.get_llm_dialogue_with_memory(
-                        memory_str, self.config.get("voiceprint", {})
-                    ),
-                    ensure_ascii=False,
-                )
+            if memory_str:
+                self.logger.bind(tag=TAG).info(memory_str[:200])
+            messages_json = json.dumps(
+                self.dialogue.get_llm_dialogue_with_memory(
+                    memory_str, self.config.get("voiceprint", {})
+                ),
+                ensure_ascii=False,
             )
+            self.logger.bind(tag=TAG).info(messages_json)
 
+            if self.llm is None:
+                self.logger.bind(tag=TAG).error("LLM 未初始化，无法处理对话")
+                return None
             if self.intent_type == "function_call" and functions is not None:
                 # 使用支持functions的streaming接口
                 llm_responses = self.llm.response_with_functions(

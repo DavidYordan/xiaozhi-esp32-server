@@ -53,6 +53,7 @@ class MemoryProvider(MemoryProviderBase):
         resource_url = f"http://{get_local_ip()}:{self.serve_port}/memu/resources/{fname}"
         payload = {"resource_url": resource_url, "modality": self.modality, "summary_prompt": None}
         try:
+            logger.bind(tag=TAG).info(f"MemU memorize url: {resource_url}, base: {self.memu_base_url}")
             async with httpx.AsyncClient(timeout=30) as client:
                 await client.post(f"{self.memu_base_url}/memorize", json=payload)
             logger.bind(tag=TAG).info(f"Memorize success - Role: {self.role_id}")
@@ -66,6 +67,7 @@ class MemoryProvider(MemoryProviderBase):
             return ""
         try:
             queries = [{"role": "user", "content": {"text": query or ""}}]
+            logger.bind(tag=TAG).info(f"MemU retrieve base: {self.memu_base_url}, qlen: {len(query or '')}")
             async with httpx.AsyncClient(timeout=30) as client:
                 r = await client.post(f"{self.memu_base_url}/retrieve", json={"queries": queries})
                 r.raise_for_status()
@@ -96,4 +98,3 @@ class MemoryProvider(MemoryProviderBase):
                 caption = r.get("caption") or r.get("url") or ""
                 parts.append(f"- {caption}")
         return "\n".join(parts)
-
