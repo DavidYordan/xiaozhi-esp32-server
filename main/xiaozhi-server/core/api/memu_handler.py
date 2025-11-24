@@ -19,12 +19,12 @@ class MemuResourceHandler:
         if not rid:
             return web.Response(status=400, text="invalid id")
         fpath = os.path.join(self.base_dir, rid)
+        self.logger.bind(tag=TAG).info(f"MemU resource fetch: rid={rid}, path={fpath}")
         if not os.path.exists(fpath):
             return web.Response(status=404, text="not found")
         try:
             text = open(fpath, "r", encoding="utf-8").read()
             return web.Response(text=text, content_type="text/plain; charset=utf-8")
         except Exception as e:
-            self.logger.bind(tag=TAG).error(str(e))
+            self.logger.bind(tag=TAG).error(f"Read resource failed: {e}")
             return web.Response(status=500, text="error")
-

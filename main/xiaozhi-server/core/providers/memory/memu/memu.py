@@ -5,6 +5,7 @@ import json
 import asyncio
 from typing import List
 import httpx
+import re
 from ..base import MemoryProviderBase, logger
 from core.utils.util import get_local_ip
 from config.config_loader import get_project_dir
@@ -36,7 +37,8 @@ class MemoryProvider(MemoryProviderBase):
         return "\n".join(lines)
 
     def _write_resource_file(self, text: str) -> str:
-        fname = f"{self.role_id}_{uuid.uuid4().hex}.txt"
+        safe_role = re.sub(r"[^A-Za-z0-9._-]", "_", str(self.role_id or "role"))
+        fname = f"{safe_role}_{uuid.uuid4().hex}.txt"
         fpath = os.path.join(self.resources_dir, fname)
         with open(fpath, "w", encoding="utf-8") as f:
             f.write(text)
@@ -49,7 +51,11 @@ class MemoryProvider(MemoryProviderBase):
             return None
 
         text = self._format_dialogue_text(msgs)
-        fname = self._write_resource_file(text)
+        try:
+            fname = self._write_resource_file(text)
+        except Exception as e:
+            logger.bind(tag=TAG).error(f"Write resource failed: {e}")
+            return None
         resource_url = f"http://{get_local_ip()}:{self.serve_port}/memu/resources/{fname}"
         payload = {"resource_url": resource_url, "modality": self.modality, "summary_prompt": None}
         try:
@@ -64,6 +70,8 @@ class MemoryProvider(MemoryProviderBase):
 
     async def query_memory(self, query: str) -> str:
         if not self.use_memu:
+            return ""
+        if not query or not str(query).strip():
             return ""
         try:
             queries = [{"role": "user", "content": {"text": query or ""}}]
