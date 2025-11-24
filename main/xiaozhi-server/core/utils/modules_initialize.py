@@ -69,6 +69,7 @@ def initialize_modules(
             if "type" not in config["Memory"][select_memory_module]
             else config["Memory"][select_memory_module]["type"]
         )
+        logger.bind(tag=TAG).info(f"初始化Memory: 模块={select_memory_module}, 类型={memory_type}")
         modules["memory"] = memory.create_instance(
             memory_type,
             config["Memory"][select_memory_module],

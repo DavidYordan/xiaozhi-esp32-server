@@ -13,14 +13,15 @@ if project_root not in sys.path:
 
 def create_instance(class_name, *args, **kwargs):
     class_name = str(class_name).strip().lower()
-    provider_file = os.path.join(
-        project_root, "core", "providers", "memory", class_name, f"{class_name}.py"
-    )
-    if os.path.exists(provider_file):
-        lib_name = f"core.providers.memory.{class_name}.{class_name}"
+    lib_name = f"core.providers.memory.{class_name}.{class_name}"
+    try:
         if lib_name not in sys.modules:
-            sys.modules[lib_name] = importlib.import_module(f"{lib_name}")
+            sys.modules[lib_name] = importlib.import_module(lib_name)
+        logger.info(f"加载记忆服务类型: {class_name}")
         return sys.modules[lib_name].MemoryProvider(*args, **kwargs)
-
-    logger.error(f"不支持的记忆服务类型: {class_name} - 路径不存在: {provider_file}")
-    raise ValueError(f"不支持的记忆服务类型: {class_name}")
+    except Exception as e:
+        provider_file = os.path.join(
+            project_root, "core", "providers", "memory", class_name, f"{class_name}.py"
+        )
+        logger.error(f"记忆服务加载失败: {class_name} - {e} - 路径尝试: {provider_file}")
+        raise ValueError(f"不支持的记忆服务类型: {class_name}")

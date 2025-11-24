@@ -797,7 +797,8 @@ class ConnectionHandler:
             self.logger.bind(tag=TAG).info(messages_json)
 
             if self.llm is None:
-                self.logger.bind(tag=TAG).error("LLM 未初始化，无法处理对话")
+                llm_sel = self.config.get("selected_module", {}).get("LLM")
+                self.logger.bind(tag=TAG).error(f"LLM 未初始化，无法处理对话，selected_module.LLM={llm_sel}")
                 return None
             if self.intent_type == "function_call" and functions is not None:
                 # 使用支持functions的streaming接口
@@ -941,11 +942,10 @@ class ConnectionHandler:
             )
             self.llm_finish_task = True
             # 使用lambda延迟计算，只有在DEBUG级别时才执行get_llm_dialogue()
-            self.logger.bind(tag=TAG).debug(
-                lambda: json.dumps(
-                    self.dialogue.get_llm_dialogue(), indent=4, ensure_ascii=False
-                )
+            final_dialogue_json = json.dumps(
+                self.dialogue.get_llm_dialogue(), indent=4, ensure_ascii=False
             )
+            self.logger.bind(tag=TAG).debug(final_dialogue_json)
 
         return True
 
