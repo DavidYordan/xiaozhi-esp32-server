@@ -57,9 +57,9 @@ class MemoryProvider(MemoryProviderBase):
             logger.bind(tag=TAG).error(f"Write resource failed: {e}")
             return None
         resource_url = f"http://{get_local_ip()}:{self.serve_port}/memu/resources/{fname}"
-        payload = {"resource_url": resource_url, "modality": self.modality, "summary_prompt": None}
+        payload = {"text": text, "modality": self.modality, "summary_prompt": None}
         try:
-            logger.bind(tag=TAG).info(f"MemU memorize url: {resource_url}, base: {self.memu_base_url}")
+            logger.bind(tag=TAG).info(f"MemU memorize direct text, base: {self.memu_base_url}")
             async with httpx.AsyncClient(timeout=30) as client:
                 await client.post(f"{self.memu_base_url}/memorize", json=payload)
             logger.bind(tag=TAG).info(f"Memorize success - Role: {self.role_id}")
